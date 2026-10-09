@@ -105,3 +105,13 @@ body.editing [contenteditable=true]{cursor:text;outline:1px dashed rgb(189 111 1
   .turning-page{left:0;width:100%;transform-origin:right center}.close-book{left:50%;top:60px;transform:translateX(-50%);white-space:nowrap}.book-controls{margin-top:-52px}.photo-large{width:82%}.page-title{font-size:34px}.body-copy{font-size:14px}
 }
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+
+/* On small screens, both pages remain accessible in a vertical reading stack. */
+@media(max-width:760px){
+  .spread{display:block;overflow-x:hidden;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#b7aa93 transparent}
+  .spread[hidden]{display:none}
+  .page{position:relative;inset:auto;display:block;min-height:640px}
+  .page+.page{border-top:3px solid #d3c6ae}
+  .page-right{display:block}
+}

@@ -3,13 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="A tactile, editable digital scrapbook diary with realistic page turns.">
-  <meta name="theme-color" content="#304a3a">
-  <title>Evergreen — Digital Scrapbook</title>
+  <meta name="description" content="An editable, tactile digital scrapbook with realistic 3D page turns.">
+  <meta name="theme-color" content="#24372e">
+  <title>Evergreen — An Interactive Scrapbook</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=DM+Sans:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
+  <script defer src="app.js"></script>
 </head>
 <body>
   <div class="grain" aria-hidden="true"></div>
@@ -21,139 +23,184 @@
     </a>
     <div class="topbar-actions">
       <p id="saveStatus" class="save-status" role="status">Saved locally</p>
-      <button class="button button-ghost" id="resetButton" type="button">Reset demo</button>
+      <button class="button button-quiet" id="resetButton" type="button">Reset</button>
       <button class="button button-primary" id="editButton" type="button" aria-pressed="false">
         <span aria-hidden="true">✦</span><span class="button-label">Edit scrapbook</span>
       </button>
     </div>
   </header>
 
-  <main class="workspace">
-    <section class="intro" aria-labelledby="introTitle">
-      <p class="eyebrow">A digital keepsake</p>
-      <h1 id="introTitle">Open a chapter worth remembering.</h1>
-      <p>Turn the pages, then switch on edit mode to make every detail your own.</p>
-    </section>
-
-    <section class="book-stage" aria-label="Interactive scrapbook">
-      <div class="ambient-shadow" aria-hidden="true"></div>
-      <div class="book" id="book">
-        <section class="cover" id="cover" aria-label="Scrapbook cover">
-          <div class="cover-spine" aria-hidden="true"></div>
-          <div class="cover-stitching" aria-hidden="true"></div>
-          <div class="cover-copy">
-            <p class="cover-kicker editable-text" contenteditable="false">our story</p>
-            <h2 class="editable-text" contenteditable="false">EVERGREEN</h2>
-            <p class="cover-year editable-text" contenteditable="false">Twenty Twenty-Six</p>
-          </div>
-
-          <div class="tape tape-top" data-draggable aria-hidden="true"></div>
-          <div class="paper-scrap scrap-one" data-draggable><span class="editable-text" contenteditable="false">small things,<br>big feelings</span></div>
-          <button class="sticker sticker-flower" data-draggable type="button" aria-label="Flower sticker">✿</button>
-          <button class="sticker sticker-star" data-draggable type="button" aria-label="Star sticker">★</button>
-          <button class="sticker sticker-heart" data-draggable type="button" aria-label="Heart sticker">♥</button>
-          <div class="postmark" data-draggable>MEMORIES<br><span>09 · 26</span></div>
-
-          <button class="cover-photo editable-image" data-image-slot="cover" type="button" aria-label="Replace cover photograph">
-            <span class="photo-placeholder"><span class="placeholder-icon">＋</span><span>Add cover photo</span></span>
-          </button>
-          <button class="open-book" id="openBookButton" type="button">Open scrapbook <span aria-hidden="true">→</span></button>
-        </section>
-
-        <section class="pages" id="pages" aria-label="Open scrapbook pages" aria-hidden="true">
-          <div class="page-stack page-stack-left" aria-hidden="true"></div>
-          <div class="page-stack page-stack-right" aria-hidden="true"></div>
-          <div class="binding" aria-hidden="true"></div>
-
-          <div class="spread" data-spread="0">
-            <article class="page page-left">
-              <span class="page-number">01</span>
-              <p class="tiny-label editable-text" contenteditable="false">THE BEGINNING</p>
-              <h2 class="page-title editable-text" contenteditable="false">A day made<br>of golden light.</h2>
-              <p class="body-copy editable-text" contenteditable="false">Some memories arrive quietly. A familiar laugh, warm sunlight, and nowhere else we needed to be.</p>
-              <button class="photo-frame photo-large editable-image" data-image-slot="page-1-main" type="button" aria-label="Replace photograph">
-                <span class="photo-placeholder"><span class="placeholder-icon">＋</span><span>Add your photo</span></span>
-              </button>
-              <div class="tape tape-photo" data-draggable aria-hidden="true"></div>
-              <p class="hand-note editable-text" data-draggable contenteditable="false">the best kind<br>of afternoon ↓</p>
-            </article>
-
-            <article class="page page-right">
-              <span class="page-number">02</span>
-              <div class="date-stamp editable-text" data-draggable contenteditable="false">SEP<br><strong>18</strong></div>
-              <button class="photo-frame polaroid polaroid-one editable-image" data-image-slot="page-1-polaroid" type="button" aria-label="Replace photograph">
-                <span class="photo-placeholder"><span class="placeholder-icon">＋</span><span>Add photo</span></span>
-                <span class="polaroid-caption editable-text" contenteditable="false">right here, right now</span>
-              </button>
-              <blockquote class="quote editable-text" contenteditable="false">“We were together.<br>I forget the rest.”</blockquote>
-              <div class="pressed-flower" data-draggable aria-hidden="true">❋</div>
-              <div class="ticket" data-draggable><small>ADMIT ONE</small><strong class="editable-text" contenteditable="false">GOOD DAYS</strong><span>No. 0926</span></div>
-            </article>
-          </div>
-
-          <div class="spread" data-spread="1" hidden>
-            <article class="page page-left page-blue">
-              <span class="page-number">03</span>
-              <p class="tiny-label editable-text" contenteditable="false">SOMEWHERE NEW</p>
-              <h2 class="page-title editable-text" contenteditable="false">Postcards from<br>our favorite place.</h2>
-              <button class="photo-frame landscape-photo editable-image" data-image-slot="page-2-main" type="button" aria-label="Replace photograph">
-                <span class="photo-placeholder"><span class="placeholder-icon">＋</span><span>Add a landscape</span></span>
-              </button>
-              <div class="map-lines" aria-hidden="true"></div>
-              <p class="hand-note note-blue editable-text" data-draggable contenteditable="false">wish you were here!</p>
-            </article>
-
-            <article class="page page-right page-blue">
-              <span class="page-number">04</span>
-              <div class="postcard" data-draggable>
-                <p class="editable-text" contenteditable="false">Take the long road.<br>Stop for the view.<br>Keep the receipt.</p>
-                <span class="postcard-lines" aria-hidden="true"></span>
-              </div>
-              <button class="photo-frame snapshot-small editable-image" data-image-slot="page-2-small" type="button" aria-label="Replace photograph">
-                <span class="photo-placeholder"><span class="placeholder-icon">＋</span><span>Add photo</span></span>
-              </button>
-              <div class="stamp" data-draggable>AIR<br>MAIL</div>
-              <p class="body-copy closing-copy editable-text" contenteditable="false">We kept a little proof that the world was wide—and that we were brave enough to wander through it.</p>
-            </article>
-          </div>
-
-          <div class="spread" data-spread="2" hidden>
-            <article class="page page-left page-pink">
-              <span class="page-number">05</span>
-              <p class="tiny-label editable-text" contenteditable="false">THE LITTLE THINGS</p>
-              <div class="photo-grid">
-                <button class="photo-frame grid-photo editable-image" data-image-slot="page-3-a" type="button"><span class="photo-placeholder"><span class="placeholder-icon">＋</span><span>Photo</span></span></button>
-                <button class="photo-frame grid-photo editable-image" data-image-slot="page-3-b" type="button"><span class="photo-placeholder"><span class="placeholder-icon">＋</span><span>Photo</span></span></button>
-                <button class="photo-frame grid-photo editable-image" data-image-slot="page-3-c" type="button"><span class="photo-placeholder"><span class="placeholder-icon">＋</span><span>Photo</span></span></button>
-                <button class="photo-frame grid-photo editable-image" data-image-slot="page-3-d" type="button"><span class="photo-placeholder"><span class="placeholder-icon">＋</span><span>Photo</span></span></button>
-              </div>
-              <p class="hand-note grid-note editable-text" data-draggable contenteditable="false">four tiny reasons to smile</p>
-            </article>
-
-            <article class="page page-right page-pink">
-              <span class="page-number">06</span>
-              <h2 class="page-title editable-text" contenteditable="false">Things I never<br>want to forget.</h2>
-              <ol class="memory-list">
-                <li class="editable-text" contenteditable="false">The song playing in the kitchen.</li>
-                <li class="editable-text" contenteditable="false">How the rain sounded that night.</li>
-                <li class="editable-text" contenteditable="false">Your laugh before the punchline.</li>
-                <li class="editable-text" contenteditable="false">The feeling of being exactly here.</li>
-              </ol>
-              <div class="wax-seal" data-draggable>E</div>
-              <p class="signoff editable-text" contenteditable="false">with love, always</p>
-            </article>
-          </div>
-
-          <div class="turning-page" id="turningPage" aria-hidden="true"></div>
-        </section>
+  <main>
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">A living keepsake</p>
+        <h1>Stories should feel<br><em>this close.</em></h1>
+        <p class="hero-intro">A tactile little home for the photographs, notes, tickets, and ordinary moments that became everything.</p>
+        <div class="instruction">
+          <span class="gesture-icon" aria-hidden="true">↗</span>
+          <span>Drag a page corner, swipe, or use the arrows</span>
+        </div>
       </div>
 
-      <nav class="book-controls" id="bookControls" aria-label="Scrapbook navigation" hidden>
-        <button class="round-button" id="previousButton" type="button" aria-label="Previous pages">←</button>
-        <div class="progress"><span id="pageLabel">Pages 1–2</span><div class="progress-dots" id="progressDots"></div></div>
-        <button class="round-button" id="nextButton" type="button" aria-label="Next pages">→</button>
-        <button class="close-book" id="closeBookButton" type="button">Close book</button>
-      </nav>
+      <div class="book-scene" id="bookScene">
+        <div class="floor-shadow" aria-hidden="true"></div>
+        <div class="book-orbit" id="bookOrbit">
+          <div class="book-frame" id="bookFrame">
+            <div class="book-edge book-edge-bottom" aria-hidden="true"></div>
+            <div class="book-edge book-edge-side" aria-hidden="true"></div>
+
+            <div class="flipbook" id="flipbook">
+              <article class="book-page cover-page" data-density="hard" data-page-kind="cover">
+                <div class="page-surface cover-surface">
+                  <div class="cover-spine" aria-hidden="true"></div>
+                  <div class="cover-seam" aria-hidden="true"></div>
+                  <div class="cover-border" aria-hidden="true"></div>
+                  <div class="cover-title">
+                    <p class="script editable-text" data-edit-key="cover-kicker">our story</p>
+                    <h2 class="editable-text" data-edit-key="cover-title">EVERGREEN</h2>
+                    <p class="cover-subtitle editable-text" data-edit-key="cover-subtitle">A collection of the days we kept</p>
+                  </div>
+                  <button class="photo cover-photo editable-image" data-image-slot="cover-photo" type="button" aria-label="Add cover photo">
+                    <span class="photo-empty"><b>＋</b><span>Add cover photo</span></span>
+                  </button>
+                  <div class="washi cover-washi draggable" data-item-key="cover-washi" aria-hidden="true"></div>
+                  <div class="paper-note cover-note draggable" data-item-key="cover-note">
+                    <span class="editable-text" data-edit-key="cover-note">small things,<br>big feelings</span>
+                  </div>
+                  <div class="sticker flower draggable" data-item-key="cover-flower">✿</div>
+                  <div class="sticker heart draggable" data-item-key="cover-heart">♥</div>
+                  <div class="sticker star draggable" data-item-key="cover-star">★</div>
+                  <div class="postal-mark draggable" data-item-key="cover-postmark">MEMORIES<br><small>09 · 2026</small></div>
+                  <p class="cover-year editable-text" data-edit-key="cover-year">VOL. I — 2026</p>
+                  <span class="cover-hint">Lift the corner to begin</span>
+                </div>
+              </article>
+
+              <article class="book-page inner-page">
+                <div class="page-surface paper-page inside-cover">
+                  <span class="page-no">01</span>
+                  <div class="torn-letter">
+                    <p class="eyebrow">A NOTE TO US</p>
+                    <h2 class="editable-text" data-edit-key="note-title">For all the days<br>we nearly forgot.</h2>
+                    <p class="editable-text letter-copy" data-edit-key="note-copy">Here are the little pieces of a life we made together—the quiet mornings, the long roads, and the laughter that followed us home.</p>
+                    <p class="editable-text signature" data-edit-key="note-signature">keep this close, always</p>
+                  </div>
+                  <div class="paper-pocket" aria-hidden="true">
+                    <span>notes & keepsakes</span>
+                    <div class="pocket-card"></div>
+                  </div>
+                  <div class="pressed-sprig draggable" data-item-key="sprig-one" aria-hidden="true">❋</div>
+                </div>
+              </article>
+
+              <article class="book-page inner-page">
+                <div class="page-surface paper-page page-sage">
+                  <span class="page-no">02</span>
+                  <p class="eyebrow editable-text" data-edit-key="p2-kicker">THE BEGINNING</p>
+                  <h2 class="page-heading editable-text" data-edit-key="p2-heading">A day made of<br><em>golden light.</em></h2>
+                  <p class="page-copy editable-text" data-edit-key="p2-copy">Some memories arrive quietly. A familiar laugh, warm sunlight, and nowhere else we needed to be.</p>
+                  <button class="photo large-photo editable-image" data-image-slot="p2-main" type="button" aria-label="Add a photograph">
+                    <span class="photo-empty"><b>＋</b><span>Add your photograph</span></span>
+                  </button>
+                  <div class="washi photo-washi draggable" data-item-key="p2-washi" aria-hidden="true"></div>
+                  <p class="scribble rose draggable editable-text" data-item-key="p2-note" data-edit-key="p2-note">the best kind<br>of afternoon ↓</p>
+                </div>
+              </article>
+
+              <article class="book-page inner-page">
+                <div class="page-surface paper-page">
+                  <span class="page-no">03</span>
+                  <div class="date-stamp draggable editable-text" data-item-key="p3-date" data-edit-key="p3-date">SEP<br><b>18</b></div>
+                  <button class="photo polaroid hero-polaroid editable-image" data-image-slot="p3-main" type="button" aria-label="Add a photograph">
+                    <span class="photo-empty"><b>＋</b><span>Add photo</span></span>
+                    <span class="photo-caption editable-text" data-edit-key="p3-caption">right here, right now</span>
+                  </button>
+                  <blockquote class="page-quote editable-text" data-edit-key="p3-quote">“We were together.<br>I forget the rest.”</blockquote>
+                  <div class="ticket draggable" data-item-key="p3-ticket">
+                    <small>ADMIT ONE</small><strong class="editable-text" data-edit-key="p3-ticket">GOOD DAYS</strong><span>No. 0926</span>
+                  </div>
+                  <div class="pressed-flower draggable" data-item-key="p3-flower" aria-hidden="true">❊</div>
+                </div>
+              </article>
+
+              <article class="book-page inner-page">
+                <div class="page-surface paper-page page-blue">
+                  <span class="page-no">04</span>
+                  <p class="eyebrow editable-text" data-edit-key="p4-kicker">SOMEWHERE NEW</p>
+                  <h2 class="page-heading editable-text" data-edit-key="p4-heading">Postcards from<br><em>our favorite place.</em></h2>
+                  <button class="photo wide-photo editable-image" data-image-slot="p4-main" type="button" aria-label="Add a landscape">
+                    <span class="photo-empty"><b>＋</b><span>Add a landscape</span></span>
+                  </button>
+                  <div class="map-contours" aria-hidden="true"></div>
+                  <p class="scribble blue draggable editable-text" data-item-key="p4-note" data-edit-key="p4-note">wish you were here!</p>
+                </div>
+              </article>
+
+              <article class="book-page inner-page">
+                <div class="page-surface paper-page page-blue">
+                  <span class="page-no">05</span>
+                  <div class="postcard draggable" data-item-key="p5-postcard">
+                    <p class="editable-text" data-edit-key="p5-postcard">Take the long road.<br>Stop for the view.<br>Keep the receipt.</p>
+                    <div class="postcard-rule" aria-hidden="true"></div>
+                  </div>
+                  <div class="airmail-stamp draggable" data-item-key="p5-stamp">AIR<br>MAIL</div>
+                  <button class="photo small-photo editable-image" data-image-slot="p5-main" type="button" aria-label="Add a photograph">
+                    <span class="photo-empty"><b>＋</b><span>Add photo</span></span>
+                  </button>
+                  <p class="page-copy lower-copy editable-text" data-edit-key="p5-copy">We kept a little proof that the world was wide—and that we were brave enough to wander through it.</p>
+                </div>
+              </article>
+
+              <article class="book-page inner-page">
+                <div class="page-surface paper-page page-blush">
+                  <span class="page-no">06</span>
+                  <p class="eyebrow editable-text" data-edit-key="p6-kicker">THE LITTLE THINGS</p>
+                  <div class="photo-grid">
+                    <button class="photo grid-photo editable-image" data-image-slot="p6-a" type="button"><span class="photo-empty"><b>＋</b><span>Photo</span></span></button>
+                    <button class="photo grid-photo editable-image" data-image-slot="p6-b" type="button"><span class="photo-empty"><b>＋</b><span>Photo</span></span></button>
+                    <button class="photo grid-photo editable-image" data-image-slot="p6-c" type="button"><span class="photo-empty"><b>＋</b><span>Photo</span></span></button>
+                    <button class="photo grid-photo editable-image" data-image-slot="p6-d" type="button"><span class="photo-empty"><b>＋</b><span>Photo</span></span></button>
+                  </div>
+                  <p class="scribble rose grid-caption editable-text" data-edit-key="p6-caption">four tiny reasons to smile</p>
+                </div>
+              </article>
+
+              <article class="book-page inner-page">
+                <div class="page-surface paper-page page-blush">
+                  <span class="page-no">07</span>
+                  <h2 class="page-heading editable-text" data-edit-key="p7-heading">Things I never<br><em>want to forget.</em></h2>
+                  <ol class="memory-list">
+                    <li class="editable-text" data-edit-key="p7-1">The song playing in the kitchen.</li>
+                    <li class="editable-text" data-edit-key="p7-2">How the rain sounded that night.</li>
+                    <li class="editable-text" data-edit-key="p7-3">Your laugh before the punchline.</li>
+                    <li class="editable-text" data-edit-key="p7-4">The feeling of being exactly here.</li>
+                  </ol>
+                  <div class="wax-seal draggable" data-item-key="p7-seal">E</div>
+                  <p class="signature editable-text" data-edit-key="p7-signoff">with love, always</p>
+                </div>
+              </article>
+
+              <article class="book-page cover-page back-cover" data-density="hard" data-page-kind="back-cover">
+                <div class="page-surface back-cover-surface">
+                  <div class="cover-border" aria-hidden="true"></div>
+                  <div class="back-emblem">E</div>
+                  <p class="script editable-text" data-edit-key="back-line">to be continued…</p>
+                  <small class="editable-text" data-edit-key="back-small">MADE FROM ORDINARY MAGIC</small>
+                </div>
+              </article>
+            </div>
+          </div>
+        </div>
+
+        <nav class="book-controls" aria-label="Book navigation">
+          <button class="nav-arrow" id="previousButton" type="button" aria-label="Previous page">←</button>
+          <div class="page-status">
+            <span id="pageLabel">Cover</span>
+            <div class="page-track"><i id="pageProgress"></i></div>
+          </div>
+          <button class="nav-arrow" id="nextButton" type="button" aria-label="Next page">→</button>
+        </nav>
+      </div>
     </section>
   </main>
 
@@ -162,24 +209,27 @@
       <div><p class="eyebrow">Edit mode</p><h2>Make it yours</h2></div>
       <button class="icon-button" id="closeEditorButton" type="button" aria-label="Close editor">×</button>
     </div>
-    <p class="editor-help">Click text to rewrite it. Click a photo placeholder to upload an image. Drag decorations anywhere on the page.</p>
+    <p class="editor-help">Select text to rewrite it. Click a photo placeholder to upload an image. Drag any outlined keepsake to move it.</p>
     <div class="editor-section">
-      <h3>Add decoration</h3>
+      <h3>Add a sticker</h3>
       <div class="sticker-picker" id="stickerPicker">
-        <button type="button" data-sticker="♥">♥</button><button type="button" data-sticker="★">★</button><button type="button" data-sticker="✿">✿</button><button type="button" data-sticker="☻">☻</button><button type="button" data-sticker="☾">☾</button>
+        <button type="button" data-sticker="♥" aria-label="Add heart">♥</button>
+        <button type="button" data-sticker="★" aria-label="Add star">★</button>
+        <button type="button" data-sticker="✿" aria-label="Add flower">✿</button>
+        <button type="button" data-sticker="☻" aria-label="Add smile">☻</button>
+        <button type="button" data-sticker="☾" aria-label="Add moon">☾</button>
       </div>
     </div>
     <div class="editor-section">
-      <h3>Scrapbook</h3>
+      <h3>Your scrapbook</h3>
       <button class="editor-action" id="exportButton" type="button">Export backup</button>
-      <button class="editor-action" id="importButton" type="button">Import backup</button>
+      <button class="editor-action secondary" id="importButton" type="button">Import backup</button>
     </div>
-    <p class="storage-note">Your edits stay in this browser unless you export a backup.</p>
+    <p class="storage-note">Edits are saved in this browser. Export a backup before clearing browser data.</p>
   </aside>
 
   <input id="imageInput" type="file" accept="image/*" hidden>
   <input id="importInput" type="file" accept="application/json" hidden>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js"></script>
 </body>
 </html>

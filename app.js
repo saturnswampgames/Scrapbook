@@ -10,7 +10,8 @@
     saveTimer: null,
     flip: null,
     pageCount: 0,
-    originalPages: []
+    originalPages: [],
+    lastFlipAt: 0
   };
 
   const flipbook = $("#flipbook");
@@ -295,7 +296,7 @@
       flippingTime: 1050,
       drawShadow: true,
       clickEventForward: true,
-      disableFlipByClick: false
+      disableFlipByClick: true
     });
 
     state.flip.on("init", (event) => {
@@ -309,7 +310,9 @@
     });
 
     state.flip.on("changeState", (event) => {
-      bookFrame.classList.toggle("is-dragging", event.data === "user_fold" || event.data === "flipping");
+      const moving = event.data === "user_fold" || event.data === "flipping";
+      bookFrame.classList.toggle("is-dragging", moving);
+      if (event.data === "flipping") state.lastFlipAt = Date.now();
     });
 
     state.flip.loadFromHTML(state.originalPages);
@@ -456,6 +459,16 @@
       top: `${34 + Math.random() * 20}%`
     });
     showToast("Sticker added—drag it into place");
+  });
+
+  bookFrame.addEventListener("click", (event) => {
+    if (state.editing || !state.flip || Date.now() - state.lastFlipAt < 500) return;
+    const parent = bookFrame.querySelector(".stf__parent") || flipbook;
+    const rect = parent.getBoundingClientRect();
+    if (!rect.width || event.clientX < rect.left || event.clientX > rect.right) return;
+    event.preventDefault();
+    if (event.clientX < rect.left + rect.width / 2) state.flip.flipPrev("bottom");
+    else state.flip.flipNext("bottom");
   });
 
   $("#resetButton").addEventListener("click", () => {

@@ -127,6 +127,19 @@
     });
   }
 
+  function syncItemPosition(source) {
+    const key = source.dataset.itemKey;
+    if (!key) return;
+    $("[data-item-key]").forEach((node) => {
+      if (node === source || node.dataset.itemKey !== key) return;
+      node.style.left = source.style.left;
+      node.style.top = source.style.top;
+      node.style.right = source.style.right;
+      node.style.bottom = source.style.bottom;
+      node.style.transform = source.style.transform;
+    });
+  }
+
   function addSticker(data, restored = false) {
     const page = state.originalPages.find((item) => item.dataset.pageId === data.pageId)
       || state.originalPages[Math.min(state.flip?.getCurrentPageIndex?.() || 0, state.originalPages.length - 1)];
@@ -364,6 +377,7 @@
       const maxTop = parent.clientHeight - drag.target.offsetHeight;
       drag.target.style.left = `${Math.max(0, Math.min(maxLeft, drag.left + event.clientX - drag.startX))}px`;
       drag.target.style.top = `${Math.max(0, Math.min(maxTop, drag.top + event.clientY - drag.startY))}px`;
+      syncItemPosition(drag.target);
     }, true);
 
     const stopDrag = () => {

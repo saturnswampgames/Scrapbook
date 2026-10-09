@@ -159,3 +159,16 @@ body.editing .editable-text{cursor:text;outline:1px dashed rgb(185 98 105 / 50%)
 
 /* Remove decorative edge rules that could protrude during 3D transforms. */
 .book-edge,.cover-seam,.cover-border{display:none!important}
+
+
+/* Editor controls are outside the flipbook so page clones cannot intercept them. */
+.editor-panel{overflow-y:auto}
+.quick-page-editor{display:grid;gap:10px}
+.quick-page-name{margin:7px 0 0;color:var(--rose);font-size:9px;font-weight:600;letter-spacing:.16em;text-transform:uppercase}
+.quick-field{display:grid;gap:5px}
+.quick-field>span{color:#6c675e;font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase}
+.quick-field textarea{width:100%;min-height:58px;resize:vertical;border:1px solid #d7ccbb;border-radius:9px;padding:9px 10px;color:var(--ink);background:#fffaf2;font:12px/1.45 "DM Sans",sans-serif}
+.quick-image-button{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:42px;border:1px solid #d7ccbb;border-radius:9px;padding:0 11px;color:var(--forest);background:#fffaf2;font-size:11px;font-weight:600;cursor:pointer}
+.quick-image-button:after{content:"＋";font-size:18px;font-weight:400}
+.quick-editor-empty{margin:0;padding:12px;border:1px dashed #cbbfae;border-radius:9px;color:#777067;font-size:11px;line-height:1.5}
+.storage-note{position:static;margin:26px 0 0}

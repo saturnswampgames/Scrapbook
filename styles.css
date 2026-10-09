@@ -155,3 +155,7 @@ body.editing .editable-text{cursor:text;outline:1px dashed rgb(185 98 105 / 50%)
   .book-scene{min-height:565px}
   .book-orbit{height:550px}
 }
+
+
+/* Remove decorative edge rules that could protrude during 3D transforms. */
+.book-edge,.cover-seam,.cover-border{display:none!important}

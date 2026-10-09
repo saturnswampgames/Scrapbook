@@ -22,6 +22,29 @@
     showToast.timer = window.setTimeout(() => toast.classList.remove("show"), 2200);
   }
 
+  function sanitizeEditableHTML(value) {
+    const template = document.createElement("template");
+    template.innerHTML = String(value);
+    const output = document.createDocumentFragment();
+
+    function copySafe(node, parent) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        parent.appendChild(document.createTextNode(node.textContent));
+        return;
+      }
+      if (node.nodeName === "BR") {
+        parent.appendChild(document.createElement("br"));
+        return;
+      }
+      node.childNodes.forEach((child) => copySafe(child, parent));
+    }
+
+    template.content.childNodes.forEach((node) => copySafe(node, output));
+    const container = document.createElement("div");
+    container.appendChild(output);
+    return container.innerHTML;
+  }
+
   function openBook() {
     state.open = true;
     document.body.classList.add("book-open");
@@ -103,7 +126,7 @@
     if (!project || project.version !== 1) throw new Error("Unsupported backup format");
     const textNodes = $$(".editable-text");
     project.text?.forEach(({ index, html }) => {
-      if (textNodes[index]) textNodes[index].innerHTML = html;
+      if (textNodes[index]) textNodes[index].innerHTML = sanitizeEditableHTML(html);
     });
     project.images?.forEach(({ slot, image }) => {
       const node = document.querySelector(`[data-image-slot="${CSS.escape(slot)}"]`);

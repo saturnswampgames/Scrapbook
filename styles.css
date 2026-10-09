@@ -172,3 +172,19 @@ body.editing .editable-text{cursor:text;outline:1px dashed rgb(185 98 105 / 50%)
 .quick-image-button:after{content:"＋";font-size:18px;font-weight:400}
 .quick-editor-empty{margin:0;padding:12px;border:1px dashed #cbbfae;border-radius:9px;color:#777067;font-size:11px;line-height:1.5}
 .storage-note{position:static;margin:26px 0 0}
+
+
+/* Dedicated, invisible hit target for reliable backward page taps. */
+.back-tap-zone{
+  position:absolute;
+  z-index:45;
+  display:block;
+  border:0;
+  padding:0;
+  background:transparent;
+  color:transparent;
+  cursor:w-resize;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
+.back-tap-zone[hidden],body.editing .back-tap-zone{display:none!important}

@@ -1,30 +1,36 @@
 (() => {
-  const STORAGE_KEY = "evergreen-scrapbook-v1";
-  const state = { open: false, editing: false, spread: 0, activeImageSlot: null, saveTimer: null };
+  "use strict";
+
+  const STORAGE_KEY = "evergreen-scrapbook-v2";
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+  const state = {
+    editing: false,
+    activeImageSlot: null,
+    saveTimer: null,
+    flip: null,
+    pageCount: 0,
+    originalPages: []
+  };
 
-  const cover = $("#cover");
-  const pages = $("#pages");
-  const controls = $("#bookControls");
+  const flipbook = $("#flipbook");
+  const bookFrame = $("#bookFrame");
   const editor = $("#editorPanel");
   const editButton = $("#editButton");
   const imageInput = $("#imageInput");
   const importInput = $("#importInput");
-  const turningPage = $("#turningPage");
-  const spreads = $$(".spread");
 
   function showToast(message) {
     const toast = $("#toast");
     toast.textContent = message;
     toast.classList.add("show");
-    window.clearTimeout(showToast.timer);
-    showToast.timer = window.setTimeout(() => toast.classList.remove("show"), 2200);
+    clearTimeout(showToast.timer);
+    showToast.timer = setTimeout(() => toast.classList.remove("show"), 2300);
   }
 
   function sanitizeEditableHTML(value) {
     const template = document.createElement("template");
-    template.innerHTML = String(value);
+    template.innerHTML = String(value ?? "");
     const output = document.createDocumentFragment();
 
     function copySafe(node, parent) {
@@ -36,6 +42,8 @@
         parent.appendChild(document.createElement("br"));
         return;
       }
+      const block = node.nodeName === "DIV" || node.nodeName === "P";
+      if (block && parent.childNodes.length) parent.appendChild(document.createElement("br"));
       node.childNodes.forEach((child) => copySafe(child, parent));
     }
 
@@ -45,107 +53,127 @@
     return container.innerHTML;
   }
 
-  function openBook() {
-    state.open = true;
-    document.body.classList.add("book-open");
-    pages.setAttribute("aria-hidden", "false");
-    window.setTimeout(() => { controls.hidden = false; }, 550);
-    updateNavigation();
-  }
-
-  function closeBook() {
-    state.open = false;
-    controls.hidden = true;
-    document.body.classList.remove("book-open");
-    pages.setAttribute("aria-hidden", "true");
-  }
-
-  function updateNavigation() {
-    spreads.forEach((spread, index) => { spread.hidden = index !== state.spread; });
-    $("#previousButton").disabled = state.spread === 0;
-    $("#nextButton").disabled = state.spread === spreads.length - 1;
-    $("#pageLabel").textContent = `Pages ${state.spread * 2 + 1}–${state.spread * 2 + 2}`;
-    $$("#progressDots button").forEach((dot, index) => dot.classList.toggle("active", index === state.spread));
-  }
-
-  function turnTo(index) {
-    if (index < 0 || index >= spreads.length || index === state.spread || turningPage.classList.length > 1) return;
-    const direction = index > state.spread ? "turn-forward" : "turn-back";
-    turningPage.classList.add(direction);
-    window.setTimeout(() => {
-      state.spread = index;
-      updateNavigation();
-    }, 340);
-    window.setTimeout(() => turningPage.classList.remove(direction), 780);
-  }
-
-  function toggleEditor(force) {
-    state.editing = typeof force === "boolean" ? force : !state.editing;
-    document.body.classList.toggle("editing", state.editing);
-    editor.classList.toggle("open", state.editing);
-    editor.setAttribute("aria-hidden", String(!state.editing));
-    editButton.setAttribute("aria-pressed", String(state.editing));
-    $(".button-label", editButton).textContent = state.editing ? "Done editing" : "Edit scrapbook";
-    $$(".editable-text").forEach((node) => node.setAttribute("contenteditable", String(state.editing)));
-    if (state.editing && !state.open) openBook();
-    if (!state.editing) saveProject();
+  function uniqueByKey(selector, attribute) {
+    const seen = new Set();
+    return $$(selector).filter((node) => {
+      const key = node.getAttribute(attribute);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   }
 
   function serializeProject() {
-    const text = $$(".editable-text").map((node, index) => ({ index, html: node.innerHTML }));
-    const images = $$("[data-image-slot]").map((node) => ({ slot: node.dataset.imageSlot, image: node.style.backgroundImage || "" }));
-    const positions = $$("[data-draggable]").map((node, index) => ({
-      index, left: node.style.left || "", top: node.style.top || "", transform: node.style.transform || ""
-    }));
-    const userStickers = $$(".user-sticker").map((node) => ({
+    const texts = {};
+    uniqueByKey("[data-edit-key]", "data-edit-key").forEach((node) => {
+      texts[node.dataset.editKey] = node.innerHTML;
+    });
+
+    const images = {};
+    uniqueByKey("[data-image-slot]", "data-image-slot").forEach((node) => {
+      images[node.dataset.imageSlot] = node.dataset.image || "";
+    });
+
+    const positions = {};
+    uniqueByKey("[data-item-key]", "data-item-key").forEach((node) => {
+      positions[node.dataset.itemKey] = {
+        left: node.style.left || "",
+        top: node.style.top || "",
+        right: node.style.right || "",
+        bottom: node.style.bottom || "",
+        transform: node.style.transform || ""
+      };
+    });
+
+    const stickers = $$(".user-sticker[data-original='true']").map((node) => ({
+      id: node.dataset.stickerId,
       value: node.textContent,
-      parent: node.parentElement?.dataset.spread ?? "cover",
+      pageId: node.closest(".book-page")?.dataset.pageId || "page-0",
       left: node.style.left,
       top: node.style.top
     }));
-    return { version: 1, text, images, positions, userStickers, updatedAt: new Date().toISOString() };
+
+    return { version: 2, texts, images, positions, stickers, updatedAt: new Date().toISOString() };
   }
 
   function saveProject() {
     try {
       $("#saveStatus").textContent = "Saving…";
       localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeProject()));
-      window.setTimeout(() => { $("#saveStatus").textContent = "Saved locally"; }, 300);
+      setTimeout(() => { $("#saveStatus").textContent = "Saved locally"; }, 280);
     } catch {
       $("#saveStatus").textContent = "Could not save";
-      showToast("That image may be too large for browser storage.");
+      showToast("Browser storage is full. Export a backup, then use smaller images.");
     }
   }
 
   function scheduleSave() {
-    window.clearTimeout(state.saveTimer);
-    state.saveTimer = window.setTimeout(saveProject, 450);
+    clearTimeout(state.saveTimer);
+    state.saveTimer = setTimeout(saveProject, 420);
+  }
+
+  function syncText(key, html, source) {
+    $$("[data-edit-key]").forEach((node) => {
+      if (node !== source && node.dataset.editKey === key) node.innerHTML = html;
+    });
+  }
+
+  function applyImageToSlot(slot, dataUrl) {
+    $$("[data-image-slot]").forEach((node) => {
+      if (node.dataset.imageSlot !== slot) return;
+      node.dataset.image = dataUrl;
+      node.style.backgroundImage = dataUrl ? `url("${dataUrl}")` : "";
+      node.classList.toggle("has-image", Boolean(dataUrl));
+    });
+  }
+
+  function addSticker(data, restored = false) {
+    const page = state.originalPages.find((item) => item.dataset.pageId === data.pageId)
+      || state.originalPages[Math.min(state.flip?.getCurrentPageIndex?.() || 0, state.originalPages.length - 1)];
+    const surface = $(".page-surface", page);
+    if (!surface) return;
+
+    const sticker = document.createElement("button");
+    sticker.type = "button";
+    sticker.className = "user-sticker draggable";
+    sticker.dataset.original = "true";
+    sticker.dataset.stickerId = data.id || `sticker-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    sticker.dataset.itemKey = sticker.dataset.stickerId;
+    sticker.textContent = data.value;
+    sticker.style.left = data.left || "44%";
+    sticker.style.top = data.top || "44%";
+    surface.appendChild(sticker);
+
+    if (!restored) {
+      saveProject();
+      refreshBook();
+    }
   }
 
   function restoreProject(project) {
-    if (!project || project.version !== 1) throw new Error("Unsupported backup format");
-    const textNodes = $$(".editable-text");
-    project.text?.forEach(({ index, html }) => {
-      if (textNodes[index]) textNodes[index].innerHTML = sanitizeEditableHTML(html);
+    if (!project || project.version !== 2) return;
+
+    Object.entries(project.texts || {}).forEach(([key, html]) => {
+      const clean = sanitizeEditableHTML(html);
+      $$("[data-edit-key]").forEach((node) => {
+        if (node.dataset.editKey === key) node.innerHTML = clean;
+      });
     });
-    project.images?.forEach(({ slot, image }) => {
-      const node = document.querySelector(`[data-image-slot="${CSS.escape(slot)}"]`);
-      if (node && image) {
-        node.style.backgroundImage = image;
-        node.classList.add("has-image");
-      }
+
+    Object.entries(project.images || {}).forEach(([slot, dataUrl]) => {
+      if (typeof dataUrl === "string") applyImageToSlot(slot, dataUrl);
     });
-    const draggableNodes = $$("[data-draggable]");
-    project.positions?.forEach(({ index, left, top, transform }) => {
-      const node = draggableNodes[index];
-      if (node) {
-        node.style.left = left;
-        node.style.top = top;
-        node.style.transform = transform;
-      }
+
+    Object.entries(project.positions || {}).forEach(([key, position]) => {
+      $$("[data-item-key]").forEach((node) => {
+        if (node.dataset.itemKey !== key) return;
+        ["left", "top", "right", "bottom", "transform"].forEach((property) => {
+          node.style[property] = position[property] || "";
+        });
+      });
     });
-    $$(".user-sticker").forEach((node) => node.remove());
-    project.userStickers?.forEach(addUserSticker);
+
+    project.stickers?.forEach((sticker) => addSticker(sticker, true));
   }
 
   function loadProject() {
@@ -157,82 +185,195 @@
     }
   }
 
-  function chooseImage(event) {
-    if (!state.editing) return;
-    state.activeImageSlot = event.currentTarget.dataset.imageSlot;
-    imageInput.click();
+  async function compressImage(file) {
+    const source = await createImageBitmap(file);
+    const limit = 1600;
+    const scale = Math.min(1, limit / Math.max(source.width, source.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(source.width * scale);
+    canvas.height = Math.round(source.height * scale);
+    const context = canvas.getContext("2d", { alpha: false });
+    context.fillStyle = "#f5eedf";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(source, 0, 0, canvas.width, canvas.height);
+    source.close();
+    return canvas.toDataURL("image/jpeg", 0.86);
   }
 
-  function applyImage(file) {
+  async function chooseImage(file) {
     if (!file || !file.type.startsWith("image/") || !state.activeImageSlot) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const target = document.querySelector(`[data-image-slot="${CSS.escape(state.activeImageSlot)}"]`);
-      if (!target) return;
-      target.style.backgroundImage = `url("${reader.result}")`;
-      target.classList.add("has-image");
+    try {
+      $("#saveStatus").textContent = "Preparing photo…";
+      const dataUrl = await compressImage(file);
+      const preload = new Image();
+      preload.src = dataUrl;
+      if (preload.decode) await preload.decode();
+      applyImageToSlot(state.activeImageSlot, dataUrl);
       saveProject();
       showToast("Photo added");
-    };
-    reader.readAsDataURL(file);
+    } catch {
+      showToast("This image could not be added.");
+    }
   }
 
-  function makeDraggable(node) {
-    let active = false;
-    let startX = 0;
-    let startY = 0;
-    let originLeft = 0;
-    let originTop = 0;
+  function refreshBook() {
+    if (!state.flip) return;
+    const index = state.flip.getCurrentPageIndex();
+    state.flip.updateFromHtml(state.originalPages);
+    state.flip.turnToPage(Math.min(index, state.originalPages.length - 1));
+    setEditorState(state.editing);
+  }
 
-    node.addEventListener("pointerdown", (event) => {
-      if (!state.editing || event.target.closest('[contenteditable="true"]')) return;
-      active = true;
-      const parent = node.offsetParent;
+  function setEditorState(enabled) {
+    state.editing = enabled;
+    document.body.classList.toggle("editing", enabled);
+    editor.classList.toggle("open", enabled);
+    editor.setAttribute("aria-hidden", String(!enabled));
+    editButton.setAttribute("aria-pressed", String(enabled));
+    $(".button-label", editButton).textContent = enabled ? "Done editing" : "Edit scrapbook";
+
+    $$("[data-edit-key]").forEach((node) => {
+      node.setAttribute("contenteditable", String(enabled));
+      node.spellcheck = enabled;
+    });
+
+    if (!enabled) saveProject();
+  }
+
+  function updateStatus(index = 0) {
+    const last = Math.max(0, state.pageCount - 1);
+    let label = "Cover";
+    if (index >= last) label = "Back cover";
+    else if (index > 0) {
+      const left = index % 2 === 0 ? index - 1 : index;
+      label = `Pages ${left}–${Math.min(left + 1, last - 1)}`;
+    }
+    $("#pageLabel").textContent = label;
+    $("#pageProgress").style.width = `${last ? (index / last) * 100 : 0}%`;
+    $("#previousButton").disabled = index <= 0;
+    $("#nextButton").disabled = index >= last;
+  }
+
+  function initFlipbook() {
+    if (!window.St?.PageFlip) {
+      document.body.classList.add("library-failed");
+      showToast("The page-turn engine could not load. Please refresh.");
+      return;
+    }
+
+    state.flip = new St.PageFlip(flipbook, {
+      width: 430,
+      height: 610,
+      size: "stretch",
+      minWidth: 285,
+      maxWidth: 430,
+      minHeight: 404,
+      maxHeight: 610,
+      maxShadowOpacity: 0.48,
+      showCover: true,
+      usePortrait: true,
+      autoSize: true,
+      mobileScrollSupport: false,
+      swipeDistance: 24,
+      flippingTime: 1050,
+      drawShadow: true,
+      clickEventForward: true,
+      disableFlipByClick: false
+    });
+
+    state.flip.on("init", (event) => {
+      state.pageCount = state.flip.getPageCount();
+      updateStatus(event.data.page);
+      setEditorState(false);
+    });
+
+    state.flip.on("flip", (event) => {
+      updateStatus(event.data);
+    });
+
+    state.flip.on("changeState", (event) => {
+      bookFrame.classList.toggle("is-dragging", event.data === "user_fold" || event.data === "flipping");
+    });
+
+    state.flip.loadFromHTML(state.originalPages);
+  }
+
+  function setupParallax() {
+    const scene = $("#bookScene");
+    scene.addEventListener("pointermove", (event) => {
+      if (state.editing || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      const rect = scene.getBoundingClientRect();
+      const x = (event.clientX - rect.left) / rect.width - 0.5;
+      const y = (event.clientY - rect.top) / rect.height - 0.5;
+      bookFrame.style.setProperty("--tilt-x", `${2 - y * 5}deg`);
+      bookFrame.style.setProperty("--tilt-y", `${-4 + x * 7}deg`);
+    });
+    scene.addEventListener("pointerleave", () => {
+      bookFrame.style.setProperty("--tilt-x", "2deg");
+      bookFrame.style.setProperty("--tilt-y", "-4deg");
+    });
+  }
+
+  function setupEditingEvents() {
+    document.addEventListener("input", (event) => {
+      const target = event.target.closest("[data-edit-key]");
+      if (!target || !state.editing) return;
+      syncText(target.dataset.editKey, target.innerHTML, target);
+      scheduleSave();
+    });
+
+    document.addEventListener("click", (event) => {
+      const image = event.target.closest("[data-image-slot]");
+      if (image && state.editing) {
+        event.preventDefault();
+        event.stopPropagation();
+        state.activeImageSlot = image.dataset.imageSlot;
+        imageInput.click();
+      }
+    }, true);
+
+    let drag = null;
+    document.addEventListener("pointerdown", (event) => {
+      const target = event.target.closest(".draggable");
+      if (!target || !state.editing || event.target.closest("[contenteditable=true]")) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const parent = target.offsetParent;
       const parentRect = parent.getBoundingClientRect();
-      const rect = node.getBoundingClientRect();
-      startX = event.clientX;
-      startY = event.clientY;
-      originLeft = rect.left - parentRect.left;
-      originTop = rect.top - parentRect.top;
-      node.style.left = `${originLeft}px`;
-      node.style.top = `${originTop}px`;
-      node.style.right = "auto";
-      node.style.bottom = "auto";
-      node.classList.add("dragging");
-      node.setPointerCapture(event.pointerId);
-    });
+      const rect = target.getBoundingClientRect();
+      drag = {
+        target,
+        startX: event.clientX,
+        startY: event.clientY,
+        left: rect.left - parentRect.left,
+        top: rect.top - parentRect.top
+      };
+      target.style.left = `${drag.left}px`;
+      target.style.top = `${drag.top}px`;
+      target.style.right = "auto";
+      target.style.bottom = "auto";
+      target.classList.add("dragging");
+      target.setPointerCapture?.(event.pointerId);
+    }, true);
 
-    node.addEventListener("pointermove", (event) => {
-      if (!active) return;
-      const parent = node.offsetParent;
-      const maxLeft = parent.clientWidth - node.offsetWidth;
-      const maxTop = parent.clientHeight - node.offsetHeight;
-      node.style.left = `${Math.max(0, Math.min(maxLeft, originLeft + event.clientX - startX))}px`;
-      node.style.top = `${Math.max(0, Math.min(maxTop, originTop + event.clientY - startY))}px`;
-    });
+    document.addEventListener("pointermove", (event) => {
+      if (!drag) return;
+      event.preventDefault();
+      const parent = drag.target.offsetParent;
+      const maxLeft = parent.clientWidth - drag.target.offsetWidth;
+      const maxTop = parent.clientHeight - drag.target.offsetHeight;
+      drag.target.style.left = `${Math.max(0, Math.min(maxLeft, drag.left + event.clientX - drag.startX))}px`;
+      drag.target.style.top = `${Math.max(0, Math.min(maxTop, drag.top + event.clientY - drag.startY))}px`;
+    }, true);
 
-    const stop = () => {
-      if (!active) return;
-      active = false;
-      node.classList.remove("dragging");
+    const stopDrag = () => {
+      if (!drag) return;
+      drag.target.classList.remove("dragging");
+      drag = null;
       scheduleSave();
     };
-    node.addEventListener("pointerup", stop);
-    node.addEventListener("pointercancel", stop);
-  }
-
-  function addUserSticker(data) {
-    const parent = data.parent === "cover" ? cover : spreads[Number(data.parent)] || spreads[state.spread];
-    const sticker = document.createElement("button");
-    sticker.type = "button";
-    sticker.className = "user-sticker";
-    sticker.dataset.draggable = "";
-    sticker.textContent = data.value;
-    sticker.style.left = data.left || "44%";
-    sticker.style.top = data.top || "44%";
-    parent.appendChild(sticker);
-    makeDraggable(sticker);
-    return sticker;
+    document.addEventListener("pointerup", stopDrag, true);
+    document.addEventListener("pointercancel", stopDrag, true);
   }
 
   function exportProject() {
@@ -250,73 +391,64 @@
     const reader = new FileReader();
     reader.onload = () => {
       try {
-        restoreProject(JSON.parse(reader.result));
+        const project = JSON.parse(reader.result);
+        if (project.version !== 2) throw new Error("Unsupported format");
+        restoreProject(project);
         saveProject();
+        refreshBook();
         showToast("Backup imported");
       } catch {
-        showToast("This backup file is not valid.");
+        showToast("This backup is not compatible.");
       }
     };
     reader.readAsText(file);
   }
 
-  function createProgressDots() {
-    spreads.forEach((_, index) => {
-      const dot = document.createElement("button");
-      dot.type = "button";
-      dot.setAttribute("aria-label", `Go to pages ${index * 2 + 1} and ${index * 2 + 2}`);
-      dot.addEventListener("click", () => turnTo(index));
-      $("#progressDots").appendChild(dot);
-    });
-  }
+  state.originalPages = $$(".book-page");
+  state.originalPages.forEach((page, index) => { page.dataset.pageId = `page-${index}`; });
+  loadProject();
+  setupParallax();
+  setupEditingEvents();
+  initFlipbook();
 
-  $("#openBookButton").addEventListener("click", openBook);
-  $("#closeBookButton").addEventListener("click", closeBook);
-  $("#nextButton").addEventListener("click", () => turnTo(state.spread + 1));
-  $("#previousButton").addEventListener("click", () => turnTo(state.spread - 1));
-  editButton.addEventListener("click", () => toggleEditor());
-  $("#closeEditorButton").addEventListener("click", () => toggleEditor(false));
+  $("#previousButton").addEventListener("click", () => state.flip?.flipPrev("bottom"));
+  $("#nextButton").addEventListener("click", () => state.flip?.flipNext("bottom"));
+  editButton.addEventListener("click", () => setEditorState(!state.editing));
+  $("#closeEditorButton").addEventListener("click", () => setEditorState(false));
   $("#exportButton").addEventListener("click", exportProject);
   $("#importButton").addEventListener("click", () => importInput.click());
-  $("#resetButton").addEventListener("click", () => {
-    if (!window.confirm("Reset every text, photo, and decoration change in this browser?")) return;
-    localStorage.removeItem(STORAGE_KEY);
-    window.location.reload();
-  });
 
   imageInput.addEventListener("change", () => {
-    applyImage(imageInput.files[0]);
+    chooseImage(imageInput.files[0]);
     imageInput.value = "";
   });
   importInput.addEventListener("change", () => {
     if (importInput.files[0]) importProject(importInput.files[0]);
     importInput.value = "";
   });
-  $$("[data-image-slot]").forEach((node) => node.addEventListener("click", chooseImage));
-  $$("[data-draggable]").forEach(makeDraggable);
-  $$(".editable-text").forEach((node) => node.addEventListener("input", scheduleSave));
 
   $("#stickerPicker").addEventListener("click", (event) => {
     const button = event.target.closest("[data-sticker]");
     if (!button) return;
-    addUserSticker({
+    const pageIndex = state.flip?.getCurrentPageIndex?.() || 0;
+    addSticker({
       value: button.dataset.sticker,
-      parent: String(state.spread),
+      pageId: `page-${Math.min(pageIndex, state.originalPages.length - 1)}`,
       left: `${38 + Math.random() * 18}%`,
       top: `${34 + Math.random() * 20}%`
     });
-    saveProject();
     showToast("Sticker added—drag it into place");
   });
 
-  document.addEventListener("keydown", (event) => {
-    if (!state.open || state.editing) return;
-    if (event.key === "ArrowRight") turnTo(state.spread + 1);
-    if (event.key === "ArrowLeft") turnTo(state.spread - 1);
-    if (event.key === "Escape") closeBook();
+  $("#resetButton").addEventListener("click", () => {
+    if (!confirm("Reset every text, photo, and decoration change in this browser?")) return;
+    localStorage.removeItem(STORAGE_KEY);
+    location.reload();
   });
 
-  createProgressDots();
-  loadProject();
-  updateNavigation();
+  document.addEventListener("keydown", (event) => {
+    if (state.editing) return;
+    if (event.key === "ArrowRight") state.flip?.flipNext("bottom");
+    if (event.key === "ArrowLeft") state.flip?.flipPrev("bottom");
+  });
 })();

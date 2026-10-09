@@ -463,13 +463,27 @@
 
   bookFrame.addEventListener("click", (event) => {
     if (state.editing || !state.flip || Date.now() - state.lastFlipAt < 500) return;
+
+    const renderedSheet = event.target.closest(".stf__item");
     const parent = bookFrame.querySelector(".stf__parent") || flipbook;
     const rect = parent.getBoundingClientRect();
     if (!rect.width || event.clientX < rect.left || event.clientX > rect.right) return;
+
     event.preventDefault();
+    event.stopPropagation();
+
+    if (renderedSheet?.classList.contains("--left")) {
+      state.flip.flipPrev("bottom");
+      return;
+    }
+    if (renderedSheet?.classList.contains("--right")) {
+      state.flip.flipNext("bottom");
+      return;
+    }
+
     if (event.clientX < rect.left + rect.width / 2) state.flip.flipPrev("bottom");
     else state.flip.flipNext("bottom");
-  });
+  }, true);
 
   $("#resetButton").addEventListener("click", () => {
     if (!confirm("Reset every text, photo, and decoration change in this browser?")) return;

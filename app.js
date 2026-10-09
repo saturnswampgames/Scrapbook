@@ -11,9 +11,7 @@
     flip: null,
     pageCount: 0,
     originalPages: [],
-    currentPageIndex: 0,
-    lastFlipAt: 0,
-    tapGesture: null
+    lastFlipAt: 0
   };
 
   const flipbook = $("#flipbook");
@@ -226,7 +224,6 @@
       if (preload.decode) await preload.decode();
       applyImageToSlot(state.activeImageSlot, dataUrl);
       saveProject();
-      renderPageEditor(state.currentPageIndex);
       showToast("Photo added");
     } catch {
       showToast("This image could not be added.");
@@ -239,84 +236,6 @@
     state.flip.updateFromHtml(state.originalPages);
     state.flip.turnToPage(Math.min(index, state.originalPages.length - 1));
     setEditorState(state.editing);
-  }
-
-  function plainTextToHTML(value) {
-    const container = document.createElement("div");
-    container.textContent = value;
-    return container.innerHTML.replace(/\r?\n/g, "<br>");
-  }
-
-  function fieldLabel(key) {
-    return key
-      .replace(/^p\d+-/, "")
-      .replace(/-/g, " ")
-      .replace(/\b\w/g, (letter) => letter.toUpperCase());
-  }
-
-  function renderPageEditor(index = state.currentPageIndex) {
-    const panel = $("#pageEditor");
-    if (!panel) return;
-    panel.replaceChildren();
-
-    const last = state.originalPages.length - 1;
-    const pageIndexes = [Math.max(0, Math.min(index, last))];
-    if (index > 0 && index < last && index + 1 < last) pageIndexes.push(index + 1);
-
-    let controls = 0;
-    pageIndexes.forEach((pageIndex) => {
-      const page = state.originalPages[pageIndex];
-      if (!page) return;
-
-      const texts = $("[data-edit-key]", page);
-      const images = $("[data-image-slot]", page);
-
-      if ((texts.length || images.length) && pageIndexes.length > 1) {
-        const heading = document.createElement("p");
-        heading.className = "eyebrow";
-        heading.textContent = `Page ${pageIndex}`;
-        panel.appendChild(heading);
-      }
-
-      texts.forEach((node) => {
-        controls += 1;
-        const field = document.createElement("div");
-        field.className = "editor-field";
-        const label = document.createElement("label");
-        label.textContent = fieldLabel(node.dataset.editKey);
-        const textarea = document.createElement("textarea");
-        textarea.rows = 3;
-        textarea.value = node.innerText;
-        textarea.addEventListener("input", () => {
-          const html = plainTextToHTML(textarea.value);
-          syncText(node.dataset.editKey, html);
-          scheduleSave();
-        });
-        field.append(label, textarea);
-        panel.appendChild(field);
-      });
-
-      images.forEach((node) => {
-        controls += 1;
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "editor-image-button";
-        button.classList.toggle("has-image", Boolean(node.dataset.image));
-        button.textContent = `${node.dataset.image ? "Replace" : "Add"} ${fieldLabel(node.dataset.imageSlot)}`;
-        button.addEventListener("click", () => {
-          state.activeImageSlot = node.dataset.imageSlot;
-          imageInput.click();
-        });
-        panel.appendChild(button);
-      });
-    });
-
-    if (!controls) {
-      const empty = document.createElement("p");
-      empty.className = "page-editor-empty";
-      empty.textContent = "Turn to a scrapbook page to edit its text and photographs.";
-      panel.appendChild(empty);
-    }
   }
 
   function setEditorState(enabled) {
@@ -332,12 +251,10 @@
       node.spellcheck = enabled;
     });
 
-    renderPageEditor(state.currentPageIndex);
     if (!enabled) saveProject();
   }
 
   function updateStatus(index = 0) {
-    state.currentPageIndex = index;
     const last = Math.max(0, state.pageCount - 1);
     let label = "Cover";
     if (index >= last) label = "Back cover";
@@ -353,7 +270,6 @@
     if (pageProgress) pageProgress.style.width = `${last ? (index / last) * 100 : 0}%`;
     if (previousButton) previousButton.disabled = index <= 0;
     if (nextButton) nextButton.disabled = index >= last;
-    renderPageEditor(index);
   }
 
   function initFlipbook() {
@@ -545,47 +461,28 @@
     showToast("Sticker added—drag it into place");
   });
 
-  bookFrame.addEventListener("pointerdown", (event) => {
-    if (state.editing || !state.flip) return;
-    state.tapGesture = {
-      x: event.clientX,
-      y: event.clientY,
-      time: Date.now(),
-      moved: false
-    };
-  }, true);
-
-  bookFrame.addEventListener("pointermove", (event) => {
-    if (!state.tapGesture) return;
-    const dx = event.clientX - state.tapGesture.x;
-    const dy = event.clientY - state.tapGesture.y;
-    if (Math.hypot(dx, dy) > 10) state.tapGesture.moved = true;
-  }, true);
-
-  bookFrame.addEventListener("pointerup", (event) => {
-    const gesture = state.tapGesture;
-    state.tapGesture = null;
-    if (!gesture || gesture.moved || state.editing || !state.flip) return;
-    if (Date.now() - gesture.time > 550 || Date.now() - state.lastFlipAt < 350) return;
+  bookFrame.addEventListener("click", (event) => {
+    if (state.editing || !state.flip || Date.now() - state.lastFlipAt < 500) return;
 
     const renderedSheet = event.target.closest(".stf__item");
     const parent = bookFrame.querySelector(".stf__parent") || flipbook;
     const rect = parent.getBoundingClientRect();
     if (!rect.width || event.clientX < rect.left || event.clientX > rect.right) return;
 
+    event.preventDefault();
+    event.stopPropagation();
+
     if (renderedSheet?.classList.contains("--left")) {
       state.flip.flipPrev("bottom");
-    } else if (renderedSheet?.classList.contains("--right")) {
-      state.flip.flipNext("bottom");
-    } else if (event.clientX < rect.left + rect.width / 2) {
-      state.flip.flipPrev("bottom");
-    } else {
-      state.flip.flipNext("bottom");
+      return;
     }
-  }, true);
+    if (renderedSheet?.classList.contains("--right")) {
+      state.flip.flipNext("bottom");
+      return;
+    }
 
-  bookFrame.addEventListener("pointercancel", () => {
-    state.tapGesture = null;
+    if (event.clientX < rect.left + rect.width / 2) state.flip.flipPrev("bottom");
+    else state.flip.flipNext("bottom");
   }, true);
 
   $("#resetButton").addEventListener("click", () => {

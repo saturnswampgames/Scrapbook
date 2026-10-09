@@ -261,10 +261,14 @@
       const left = index % 2 === 0 ? index - 1 : index;
       label = `Pages ${left}–${Math.min(left + 1, last - 1)}`;
     }
-    $("#pageLabel").textContent = label;
-    $("#pageProgress").style.width = `${last ? (index / last) * 100 : 0}%`;
-    $("#previousButton").disabled = index <= 0;
-    $("#nextButton").disabled = index >= last;
+    const pageLabel = $("#pageLabel");
+    const pageProgress = $("#pageProgress");
+    const previousButton = $("#previousButton");
+    const nextButton = $("#nextButton");
+    if (pageLabel) pageLabel.textContent = label;
+    if (pageProgress) pageProgress.style.width = `${last ? (index / last) * 100 : 0}%`;
+    if (previousButton) previousButton.disabled = index <= 0;
+    if (nextButton) nextButton.disabled = index >= last;
   }
 
   function initFlipbook() {
@@ -425,8 +429,8 @@
   setupEditingEvents();
   initFlipbook();
 
-  $("#previousButton").addEventListener("click", () => state.flip?.flipPrev("bottom"));
-  $("#nextButton").addEventListener("click", () => state.flip?.flipNext("bottom"));
+  $("#previousButton")?.addEventListener("click", () => state.flip?.flipPrev("bottom"));
+  $("#nextButton")?.addEventListener("click", () => state.flip?.flipNext("bottom"));
   editButton.addEventListener("click", () => setEditorState(!state.editing));
   $("#closeEditorButton").addEventListener("click", () => setEditorState(false));
   $("#exportButton").addEventListener("click", exportProject);

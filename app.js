@@ -13,7 +13,8 @@
     originalPages: [],
     currentPageIndex: 0,
     lastFlipAt: 0,
-    tapGesture: null
+    tapGesture: null,
+    backTapZone: null
   };
 
   const flipbook = $("#flipbook");
@@ -335,8 +336,12 @@
       node.spellcheck = enabled;
     });
 
+    if (state.backTapZone) state.backTapZone.hidden = enabled || state.currentPageIndex <= 0;
     if (enabled) renderQuickEditor();
-    if (!enabled) saveProject();
+    if (!enabled) {
+      saveProject();
+      requestAnimationFrame(positionBackTapZone);
+    }
   }
 
   function updateStatus(index = 0) {
@@ -356,7 +361,48 @@
     if (pageProgress) pageProgress.style.width = `${last ? (index / last) * 100 : 0}%`;
     if (previousButton) previousButton.disabled = index <= 0;
     if (nextButton) nextButton.disabled = index >= last;
+    if (state.backTapZone) state.backTapZone.hidden = state.editing || index <= 0;
     if (state.editing) renderQuickEditor();
+    requestAnimationFrame(positionBackTapZone);
+  }
+
+  function goBackOneSpread() {
+    if (!state.flip || state.editing) return;
+    const current = state.flip.getCurrentPageIndex();
+    if (current <= 0) return;
+    const target = current <= 1 ? 0 : current - 2;
+    state.flip.flip(target, "bottom");
+  }
+
+  function positionBackTapZone() {
+    if (!state.backTapZone || !state.flip) return;
+    const parent = bookFrame.querySelector(".stf__parent") || flipbook;
+    const rect = parent.getBoundingClientRect();
+    const frameRect = bookFrame.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+
+    Object.assign(state.backTapZone.style, {
+      left: `${rect.left - frameRect.left}px`,
+      top: `${rect.top - frameRect.top}px`,
+      width: `${rect.width / 2}px`,
+      height: `${rect.height}px`
+    });
+  }
+
+  function createBackTapZone() {
+    if (state.backTapZone) return;
+    const zone = document.createElement("button");
+    zone.type = "button";
+    zone.className = "back-tap-zone";
+    zone.setAttribute("aria-label", "Turn to previous pages");
+    zone.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      goBackOneSpread();
+    });
+    bookFrame.appendChild(zone);
+    state.backTapZone = zone;
+    requestAnimationFrame(positionBackTapZone);
   }
 
   function initFlipbook() {
@@ -389,11 +435,17 @@
     state.flip.on("init", (event) => {
       state.pageCount = state.flip.getPageCount();
       updateStatus(event.data.page);
+      createBackTapZone();
       setEditorState(false);
     });
 
     state.flip.on("flip", (event) => {
       updateStatus(event.data);
+      setTimeout(positionBackTapZone, 80);
+    });
+
+    state.flip.on("changeOrientation", () => {
+      setTimeout(positionBackTapZone, 80);
     });
 
     state.flip.on("changeState", (event) => {
@@ -586,6 +638,8 @@
     localStorage.removeItem(STORAGE_KEY);
     location.reload();
   });
+
+  window.addEventListener("resize", positionBackTapZone);
 
   document.addEventListener("keydown", (event) => {
     if (state.editing) return;

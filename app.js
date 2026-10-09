@@ -11,7 +11,9 @@
     flip: null,
     pageCount: 0,
     originalPages: [],
-    lastFlipAt: 0
+    currentPageIndex: 0,
+    lastFlipAt: 0,
+    tapGesture: null
   };
 
   const flipbook = $("#flipbook");
@@ -224,6 +226,7 @@
       if (preload.decode) await preload.decode();
       applyImageToSlot(state.activeImageSlot, dataUrl);
       saveProject();
+      if (state.editing) renderQuickEditor();
       showToast("Photo added");
     } catch {
       showToast("This image could not be added.");
@@ -236,6 +239,87 @@
     state.flip.updateFromHtml(state.originalPages);
     state.flip.turnToPage(Math.min(index, state.originalPages.length - 1));
     setEditorState(state.editing);
+  }
+
+  function plainTextToHTML(value) {
+    const container = document.createElement("div");
+    container.textContent = value;
+    return container.innerHTML.replace(/\r?\n/g, "<br>");
+  }
+
+  function humanLabel(key) {
+    return key.replace(/^p\d+-/, "").replace(/-/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+  }
+
+  function renderQuickEditor() {
+    let section = $("#quickEditorSection");
+    if (!section) {
+      section = document.createElement("div");
+      section.id = "quickEditorSection";
+      section.className = "editor-section";
+      section.innerHTML = '<h3>Current visible pages</h3><div class="quick-page-editor" id="quickPageEditor"></div>';
+      const firstSection = $(".editor-section", editor);
+      editor.insertBefore(section, firstSection);
+    }
+
+    const panel = $("#quickPageEditor");
+    panel.replaceChildren();
+    const last = state.originalPages.length - 1;
+    const current = Math.max(0, Math.min(state.currentPageIndex, last));
+    const indexes = [current];
+    if (current > 0 && current < last && current + 1 < last) indexes.push(current + 1);
+    let count = 0;
+
+    indexes.forEach((pageIndex) => {
+      const page = state.originalPages[pageIndex];
+      if (!page) return;
+      const textNodes = $("[data-edit-key]", page);
+      const imageNodes = $("[data-image-slot]", page);
+
+      if (indexes.length > 1 && (textNodes.length || imageNodes.length)) {
+        const pageName = document.createElement("p");
+        pageName.className = "quick-page-name";
+        pageName.textContent = `Page ${pageIndex}`;
+        panel.appendChild(pageName);
+      }
+
+      textNodes.forEach((node) => {
+        count += 1;
+        const field = document.createElement("label");
+        field.className = "quick-field";
+        const caption = document.createElement("span");
+        caption.textContent = humanLabel(node.dataset.editKey);
+        const input = document.createElement("textarea");
+        input.rows = 2;
+        input.value = node.innerText;
+        input.addEventListener("input", () => {
+          syncText(node.dataset.editKey, plainTextToHTML(input.value));
+          scheduleSave();
+        });
+        field.append(caption, input);
+        panel.appendChild(field);
+      });
+
+      imageNodes.forEach((node) => {
+        count += 1;
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "quick-image-button";
+        button.textContent = `${node.dataset.image ? "Replace" : "Add"} ${humanLabel(node.dataset.imageSlot)}`;
+        button.addEventListener("click", () => {
+          state.activeImageSlot = node.dataset.imageSlot;
+          imageInput.click();
+        });
+        panel.appendChild(button);
+      });
+    });
+
+    if (!count) {
+      const empty = document.createElement("p");
+      empty.className = "quick-editor-empty";
+      empty.textContent = "Turn to an inside page to edit its text and photographs.";
+      panel.appendChild(empty);
+    }
   }
 
   function setEditorState(enabled) {
@@ -251,10 +335,12 @@
       node.spellcheck = enabled;
     });
 
+    if (enabled) renderQuickEditor();
     if (!enabled) saveProject();
   }
 
   function updateStatus(index = 0) {
+    state.currentPageIndex = index;
     const last = Math.max(0, state.pageCount - 1);
     let label = "Cover";
     if (index >= last) label = "Back cover";
@@ -270,6 +356,7 @@
     if (pageProgress) pageProgress.style.width = `${last ? (index / last) * 100 : 0}%`;
     if (previousButton) previousButton.disabled = index <= 0;
     if (nextButton) nextButton.disabled = index >= last;
+    if (state.editing) renderQuickEditor();
   }
 
   function initFlipbook() {
@@ -461,28 +548,37 @@
     showToast("Sticker added—drag it into place");
   });
 
-  bookFrame.addEventListener("click", (event) => {
-    if (state.editing || !state.flip || Date.now() - state.lastFlipAt < 500) return;
+  bookFrame.addEventListener("pointerdown", (event) => {
+    if (state.editing || !state.flip) return;
+    state.tapGesture = { x: event.clientX, y: event.clientY, startedAt: Date.now(), moved: false };
+  }, true);
 
-    const renderedSheet = event.target.closest(".stf__item");
+  bookFrame.addEventListener("pointermove", (event) => {
+    if (!state.tapGesture) return;
+    if (Math.hypot(event.clientX - state.tapGesture.x, event.clientY - state.tapGesture.y) > 10) {
+      state.tapGesture.moved = true;
+    }
+  }, true);
+
+  bookFrame.addEventListener("pointerup", (event) => {
+    const tap = state.tapGesture;
+    state.tapGesture = null;
+    if (!tap || tap.moved || state.editing || !state.flip || Date.now() - tap.startedAt > 600) return;
+
     const parent = bookFrame.querySelector(".stf__parent") || flipbook;
     const rect = parent.getBoundingClientRect();
     if (!rect.width || event.clientX < rect.left || event.clientX > rect.right) return;
 
-    event.preventDefault();
-    event.stopPropagation();
+    const sheet = event.target.closest(".stf__item");
+    const goBack = sheet?.classList.contains("--left")
+      || (!sheet?.classList.contains("--right") && event.clientX < rect.left + rect.width / 2);
 
-    if (renderedSheet?.classList.contains("--left")) {
-      state.flip.flipPrev("bottom");
-      return;
-    }
-    if (renderedSheet?.classList.contains("--right")) {
-      state.flip.flipNext("bottom");
-      return;
-    }
-
-    if (event.clientX < rect.left + rect.width / 2) state.flip.flipPrev("bottom");
+    if (goBack) state.flip.flipPrev("bottom");
     else state.flip.flipNext("bottom");
+  }, true);
+
+  bookFrame.addEventListener("pointercancel", () => {
+    state.tapGesture = null;
   }, true);
 
   $("#resetButton").addEventListener("click", () => {

@@ -268,10 +268,8 @@
       const page = state.originalPages[pageIndex];
       if (!page) return;
 
-      const texts = uniqueByKey("[data-edit-key]", "data-edit-key")
-        .filter((node) => page.contains(node));
-      const images = uniqueByKey("[data-image-slot]", "data-image-slot")
-        .filter((node) => page.contains(node));
+      const texts = $("[data-edit-key]", page);
+      const images = $("[data-image-slot]", page);
 
       if ((texts.length || images.length) && pageIndexes.length > 1) {
         const heading = document.createElement("p");
